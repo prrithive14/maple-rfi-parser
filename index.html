@@ -119,6 +119,44 @@
       color: var(--charcoal-soft);
       text-transform: uppercase;
     }
+
+    .model-toggle {
+      display: inline-flex;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .model-toggle button {
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--charcoal-soft);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .model-toggle button:hover { color: var(--charcoal); }
+    .model-toggle button.active {
+      background: var(--charcoal);
+      color: white;
+    }
+    .model-toggle .hint {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 400;
+      font-size: 0.65rem;
+      letter-spacing: 0;
+      text-transform: none;
+      opacity: 0.6;
+      margin-left: 4px;
+    }
+    .model-toggle button.active .hint { opacity: 0.7; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -178,9 +216,10 @@
     <section id="upload-section">
       <div class="mb-8">
         <p class="label-stamp">Step 01</p>
-        <h2 class="font-display text-3xl font-bold mt-1">Upload Visit Prep</h2>
+        <h2 class="font-display text-3xl font-bold mt-1">Upload customer document</h2>
         <p class="text-gray-600 mt-2 max-w-2xl">
-          Drop a Visit Prep PDF or images describing the customer's needs. The system will identify what to source from vendors and propose RFI line items for your review.
+          Drop a Visit Prep PDF (your internal research) or a customer's incoming RFI document.
+          Either way, the system will identify what Maple needs to source from vendors and propose RFI line items for your review.
         </p>
       </div>
 
@@ -197,6 +236,18 @@
       </div>
 
       <div id="files-list" class="mt-6 space-y-2"></div>
+
+      <div class="mt-6 flex items-center gap-3 flex-wrap">
+        <span class="label-stamp">Model</span>
+        <div class="model-toggle" role="group" aria-label="Model selection">
+          <button type="button" data-model="claude-sonnet-4-5" class="active">
+            Sonnet <span class="hint">cheaper</span>
+          </button>
+          <button type="button" data-model="claude-opus-4-5">
+            Opus <span class="hint">smarter</span>
+          </button>
+        </div>
+      </div>
 
       <div class="mt-8 flex flex-wrap items-center gap-3">
         <button id="extract-btn" class="btn-primary px-8 py-3 rounded-md font-display font-semibold tracking-wide" disabled>
@@ -360,6 +411,7 @@ let lineItems = [];     // { id, description, details, quantity, unit, key_specs
 let vendors = [];       // { id, company, contact, email }
 let customerContext = null; // for the internal preview only
 let currentPassword = sessionStorage.getItem(LS_KEYS.password) || "";
+let selectedModel = "claude-sonnet-4-5"; // default — can be flipped via the toggle
 
 //============================================================
 // LOGIN
@@ -549,6 +601,17 @@ clearBtn.addEventListener("click", () => {
   refreshUploadUI();
 });
 
+// Model toggle — swaps active state and updates the variable that gets sent
+// to the Worker on the next extract call. Only one button can be active.
+document.querySelectorAll(".model-toggle [data-model]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    selectedModel = btn.getAttribute("data-model");
+    document.querySelectorAll(".model-toggle [data-model]").forEach((b) => {
+      b.classList.toggle("active", b === btn);
+    });
+  });
+});
+
 //============================================================
 // EXTRACT (call worker)
 //============================================================
@@ -570,6 +633,7 @@ extractBtn.addEventListener("click", async () => {
 
   const payload = {
     password: currentPassword,
+    model: selectedModel,
     images: imageFiles.map((i) => ({ media_type: i.mediaType, data: i.base64 })),
   };
   if (pdfFile) {
@@ -653,6 +717,13 @@ function renderContextPreview() {
   const parts = [];
   if (customerContext.customer_name) parts.push(`<strong>${escapeHtml(customerContext.customer_name)}</strong>`);
   if (customerContext.industry) parts.push(escapeHtml(customerContext.industry));
+  // source_type is "visit_prep" or "customer_rfi" — show it as a friendly badge
+  // so you can sanity-check the model identified the document correctly
+  if (customerContext.source_type) {
+    const label = customerContext.source_type === "customer_rfi" ? "Customer RFI" :
+                  customerContext.source_type === "visit_prep" ? "Visit Prep" : "";
+    if (label) parts.push(`<span class="pill">${label}</span>`);
+  }
   let html = parts.join(" · ");
   if (customerContext.summary) html += (html ? "<br>" : "") + escapeHtml(customerContext.summary);
   body.innerHTML = html;
