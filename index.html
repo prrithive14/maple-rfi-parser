@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Maple MPSS — RFI Generator</title>
+  <title>Maple MPSS — RFI Generator</title>h
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
@@ -410,7 +410,7 @@ let uploadedFiles = []; // { id, file, kind: "pdf"|"image", base64, mediaType, n
 let lineItems = [];     // { id, description, details, quantity, unit, key_specs, category, clarifying_questions: [{q, a}], removed }
 let vendors = [];       // { id, company, contact, email }
 let customerContext = null; // for the internal preview only
-let currentPassword = sessionStorage.getItem(LS_KEYS.password) || "";
+let currentPassword = localStorage.getItem(LS_KEYS.password) || "";
 let selectedModel = "claude-sonnet-4-5"; // default — can be flipped via the toggle
 
 //============================================================
@@ -436,12 +436,12 @@ loginForm.addEventListener("submit", (e) => {
   e.preventDefault();
   loginError.classList.add("hidden");
   currentPassword = passwordInput.value;
-  sessionStorage.setItem(LS_KEYS.password, currentPassword);
+  localStorage.setItem(LS_KEYS.password, currentPassword);
   showApp();
 });
 
 document.getElementById("logout-btn").addEventListener("click", () => {
-  sessionStorage.removeItem(LS_KEYS.password);
+  localStorage.removeItem(LS_KEYS.password);
   currentPassword = "";
   passwordInput.value = "";
   appScreen.classList.add("hidden");
@@ -650,7 +650,7 @@ extractBtn.addEventListener("click", async () => {
 
     if (!resp.ok || !result.ok) {
       if (resp.status === 401) {
-        sessionStorage.removeItem(LS_KEYS.password);
+        localStorage.removeItem(LS_KEYS.password);
         currentPassword = "";
         appScreen.classList.add("hidden");
         loginScreen.classList.remove("hidden");
